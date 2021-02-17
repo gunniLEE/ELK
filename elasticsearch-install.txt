@@ -1,4 +1,4 @@
-### ELK 설치
+### ELK install
 
 [root@elk-master ~]# yum list java*jdk-devel
 
@@ -59,7 +59,7 @@ discovery.seed_hosts: ["192.168.208.133", "127.0.0.1"]
 cluster.initial_master_nodes: ["elk-master"]
 node.master: true
 
--- ELK 전용 디바이스 설정 --
+-- ELK Device Set --
 [root@elk-master ~]# df -h
 /dev/sda2       9.1G   37M  8.6G   1% /BACKUP
 
@@ -80,8 +80,7 @@ elasticsearch  kibana  log  logstash
 
 
 --------------------------------------------------------------
--ELK 소유권 설정
-
+-ELK owner set --
 [root@elk-master /]# grep elasticsearch /etc/passwd
 elasticsearch:x:987:980:elasticsearch user:/nonexistent:/sbin/nologin
 [root@elk-master /]# grep elasticsearch /etc/group
@@ -91,12 +90,12 @@ elasticsearch:x:980:
 drwxr-xr-x.   7 elasticsearch elasticsearch  4096 Feb 17 14:21 ELK
 
 -----------------------------------------------------------------
-## 메모리 세팅
+## memory setting
 [root@elk-master /]# vi /etc/elasticsearch/jvm.options
      38 -Xms2g
      39 -Xmx2g
 -------------------------------------------------------------------
--- ElasticSearch 세팅 -- 
+-- ElasticSearch setting -- 
 [root@elk-master ~]# systemctl daemon-reload
 [root@elk-master ~]# systemctl enable elasticsearch.service
 [root@elk-master ~]# systemctl start elasticsearch.service
@@ -129,7 +128,7 @@ elasticsearch.service                         enabled
 
 --------------------------------------------------------------
 
--- Logstash 세팅 --
+-- Logstash setting --
 
 [root@elk-master ~]# vi /etc/logstash/logstash.yml
 29 path.data: /ELK/logstash
@@ -151,7 +150,7 @@ path.logs: /ELK/log/logstash
 
 --------------------------------------------------------------
 
--- Kibana 세팅 --
+-- Kibana setting --
 
 [root@elk-master ~]# vi /etc/kibana/kibana.yml
 3 server.port: 5601

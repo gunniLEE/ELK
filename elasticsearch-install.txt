@@ -1,0 +1,212 @@
+### ELK 설치
+
+[root@elk-master ~]# yum list java*jdk-devel
+
+[root@elk-master ~]# rpm -ql java-1.8.0-openjdk
+
+[root@elk-master ~]# java -version
+
+[root@elk-master ~]# vi /etc/profile
+. . .
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.275.b01-0.el7_9.x86_64/jre
+export PATH=$PATH$JAVA_HOME/bin
+export CLASSPATH='.'
+
+. . .
+
+[root@elk-master ~]# source /etc/profile
+[root@elk-master ~]# echo $JAVA_HOME
+/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.275.b01-0.el7_9.x86_64
+
+
+[root@elk-master ~]# rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+[root@elk-master ~]# vi etc/yum.repos.d/elasticsearch.repo
+
+. . . 
+
+[elasticsearch]
+name=Elasticsearch repository for 7.x packages
+baseurl=https://artifacts.elastic.co/packages/7.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+autorefresh=1
+type=rpm-md
+
+. . .
+
+[root@elk-master ~]# yum repolist
+elasticsearch 7.x ~~~~
+
+
+[root@elk-master ~]# yum -y install elasticsearch logstash kibana
+
+
+-----------------------------------------------------------------------------------------------
+### /usr/share/elasticsearch | logstash | kibana
+### /etc/elasticsearch | logstash | kibana 
+
+[root@elk-master ~]# vi /etc/elasticsearch/elasticsearch.yml
+
+cluster.name: kmr-app
+node.name: elk-master
+path.data: /ELK/elasticsearch
+path.logs: /ELK/log/elasticsearch
+network.host:0.0.0.0
+http.port: 9200
+discovery.seed_hosts: ["192.168.208.133", "127.0.0.1"]
+cluster.initial_master_nodes: ["elk-master"]
+node.master: true
+
+-- ELK 전용 디바이스 설정 --
+[root@elk-master ~]# df -h
+/dev/sda2       9.1G   37M  8.6G   1% /BACKUP
+
+[root@elk-master ~]# umount /BACKUP
+[root@elk-master ~]# mkdir /ELK
+[root@elk-master ~]# mount /dev/sda2 /ELK/
+[root@elk-master ~]# df -h
+/dev/sda2       9.1G   37M  8.6G   1% /ELK
+
+[root@elk-master ~]# vi /etc/fstab
+UUID=cac7f64a-f9ea-4db4-965f-d00c077d6d8d 	/ELK
+
+[root@elk-master ~]# cd /ELK/
+
+[root@elk-master ELK]# mkdir elasticsearch logstash kibana log
+[root@elk-master ELK]# ls
+elasticsearch  kibana  log  logstash
+
+
+--------------------------------------------------------------
+-ELK 소유권 설정
+
+[root@elk-master /]# grep elasticsearch /etc/passwd
+elasticsearch:x:987:980:elasticsearch user:/nonexistent:/sbin/nologin
+[root@elk-master /]# grep elasticsearch /etc/group
+elasticsearch:x:980:
+[root@elk-master /]# chown -R elasticsearch.elasticsearch /ELK
+[root@elk-master /]# ll
+drwxr-xr-x.   7 elasticsearch elasticsearch  4096 Feb 17 14:21 ELK
+
+-----------------------------------------------------------------
+## 메모리 세팅
+[root@elk-master /]# vi /etc/elasticsearch/jvm.options
+     38 -Xms2g
+     39 -Xmx2g
+-------------------------------------------------------------------
+-- ElasticSearch 세팅 -- 
+[root@elk-master ~]# systemctl daemon-reload
+[root@elk-master ~]# systemctl enable elasticsearch.service
+[root@elk-master ~]# systemctl start elasticsearch.service
+[root@elk-master ~]# chkconfig --add elasticsearch
+[root@elk-master ~]# systemctl list-unit-files | grep elasticsearch
+elasticsearch.service                         enabled
+[root@elk-master ~]# systemctl status elasticsearch.service
+●  Active: active (running) since Wed 2021-02-17 14:43:27 KST; 23s ago
+
+[root@elk-master ~]# ps -ef | grep elasticsearch
+
+[root@elk-master ~]# curl -XGET localhost:9200
+{
+  "name" : "elk-master",
+  "cluster_name" : "kmr-app",
+  "cluster_uuid" : "MHgqFWnHQDSQnKWY6Jx_0Q",
+  "version" : {
+    "number" : "7.11.0",
+    "build_flavor" : "default",
+    "build_type" : "rpm",
+    "build_hash" : "8ced7813d6f16d2ef30792e2fcde3e755795ee04",
+    "build_date" : "2021-02-08T22:44:01.320463Z",
+    "build_snapshot" : false,
+    "lucene_version" : "8.7.0",
+    "minimum_wire_compatibility_version" : "6.8.0",
+    "minimum_index_compatibility_version" : "6.0.0-beta1"
+  },
+  "tagline" : "You Know, for Search"
+}
+
+--------------------------------------------------------------
+
+-- Logstash 세팅 --
+
+[root@elk-master ~]# vi /etc/logstash/logstash.yml
+29 path.data: /ELK/logstash
+path.logs: /ELK/log/logstash
+
+[root@elk-master ~]# vi /etc/logstash/jvm.options
+-Xms2g
+-Xmx2g
+
+[root@elk-master ~]# systemctl enable logstash.service
+[root@elk-master ~]# systemctl start logstash.service
+[root@elk-master ~]# systemctl status logstash.service
+● logstash.service - logstash
+   Loaded: loaded (/etc/systemd/system/logstash.service; enabled; vendor preset: disabled)
+   Active: active (running)
+
+[root@elk-master ~]# ps -ef | grep logstash
+/usr/share/logstash/jdk/bin/java -Xms2g -Xmx2g
+
+--------------------------------------------------------------
+
+-- Kibana 세팅 --
+
+[root@elk-master ~]# vi /etc/kibana/kibana.yml
+3 server.port: 5601
+9 server.host: "0.0.0.0"
+32 server.name: "elk-master"
+35 elasticsearch.hosts: ["http://localhost:9200"]
+
+[root@elk-master ~]# systemctl enable kibana.service
+[root@elk-master ~]# systemctl start kibana.service
+[root@elk-master ~]# systemctl status kibana.service
+● kibana.service - Kibana
+   Loaded: loaded (/etc/systemd/system/kibana.service; enabled; vendor preset: disabled)
+   Active: active (running)
+
+[root@elk-master ~]# ps -ef | grep kibana
+
+
+---------------------------------------------------------------------------------------------------
+
+kibana port : 5601/tcp
+elasticsearch port : 9200/tcp , 9300/tcp
+logstash port : 5443/tcp , 5443/udp
+
+### Port open ###
+
+./fw_enable.sh 
+
+or 
+
+firewall-cmd --add-port=5443/tcp --permanent --zone=public 
+. . . . 
+ . . . .
+. . . . .
+firewall-cmd --reload
+firewall-cmd --list-all
+ports: 9200/tcp 9300/tcp 5443/tcp 5443/udp 5601/tcp
+
+
+-----------------------------------------------------------------------------------------------------
+
+[CAT API]
+
+[root@elk-master ~]# curl localhost:9200/_cat
+=^.^=
+
+[root@elk-master ~]# curl 'localhost:9200/_cat/master?h=host,node&v=true'
+host            node
+192.168.208.133 elk-master
+
+[root@elk-master ~]# curl 'localhost:9200/_cat/master?format=json&pretty'
+[
+  {
+    "id" : "uXOCXZGJTDmyIThpHrgTDQ",
+    "host" : "192.168.208.133",
+    "ip" : "192.168.208.133",
+    "node" : "elk-master"
+  }
+]

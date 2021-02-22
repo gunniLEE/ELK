@@ -1,0 +1,77 @@
+[root@elk-master ELK_LABs]# ls
+kakao.csv
+ 
+[root@elk-master ~]# cd /etc/logstash/conf.d/
+
+[root@elk-master conf.d]# vi kakao.conf
+
+input {
+  file {
+    path => "/root/ELK_LABs/kakao.csv"
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+  }
+}
+filter {
+  csv {
+      separator => ","
+      columns => ["Date","Open","High","Low","Close","Adj Close","Volume"]
+  }
+  date {match => ["Date", "yyyy-MM-dd"]}
+  mutate {convert => ["Open", "float"]}
+  mutate {convert => ["High", "float"]}
+  mutate {convert => ["Low", "float"]}
+  mutate {convert => ["Close", "float"]}
+  mutate {convert => ["Adj Close", "float"]}
+  mutate {convert => ["Volume", "float"]}
+}
+output {
+  elasticsearch {
+    hosts => "localhost:9200"
+    manage_template => false
+    index => "kakao"
+    }
+    stdout {}
+}
+
+[root@elk-master conf.d]# /usr/share/logstash/bin/logstash -f kakao.conf
+
+    "@timestamp" => 2021-01-19T15:00:00.000Z,
+          "host" => "elk-master",
+     "Adj Close" => 444000.0,
+          "path" => "/root/ELK_LABs/kakao.csv",
+        "Volume" => 596340.0
+}
+{
+          "Open" => 452500.0,
+         "Close" => 454000.0,
+      "@version" => "1",
+          "Date" => "2021-01-21",
+          "High" => 461000.0,
+           "Low" => 452000.0,
+       "message" => "2021-01-21,452500.000000,461000.000000,452000.000000,454000.000000,454000.000000,679093",
+    "@timestamp" => 2021-01-20T15:00:00.000Z,
+          "host" => "elk-master",
+     "Adj Close" => 454000.0,
+          "path" => "/root/ELK_LABs/kakao.csv",
+        "Volume" => 679093.0
+}
+
+.
+.
+.
+.
+.
+.
+.
+.
+
+[root@elk-master conf.d]# curl localhost:9200/_cat/indices?v | grep kakao
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  3556  100  3556    0     0  82012      0 --:--:-- --:--:-- --:--:-- 84666
+yellow open   kakao                           xlWSzwNuQ1W4JTeYiYJodA   1   1        493            0      233kb          233kb
+
+
+# Kibana 접속 후 index pattering 진행 
+    ㄴ Discover & Visualize 툴 이용하여 시각화 및 분석 
